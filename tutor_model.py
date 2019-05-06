@@ -59,6 +59,21 @@ def provinceToArray(provinces):
 
     return output
 
+def activityToArray(activities):
+    output = []
+
+    for activity in activities:
+        activity_data = {}
+        activity_data['activity_id'] = activity.activity_id
+        activity_data['user_id'] = activity.user_id
+        activity_data['title'] = activity.title
+        activity_data['description'] = activity.description
+        activity_data['date'] = activity.date.strftime('%b %d %Y %I:%M%p')
+        activity_data['student_name'] = activity.student_name
+        output.append(activity_data)
+
+    return output
+
 class Neighborhood(Base):
     __tablename__ = 'neighborhood'
 
@@ -144,7 +159,6 @@ def toUser(items):
         user.user_code = items['user_code']
 
     user.public_id = str(uuid.uuid4())
-    #user.user_code = str('U-51515')
     user.date = datetime.datetime.now()
 
     return user
@@ -467,7 +481,6 @@ def infoUserImageToArray(users):
         userimage_data['status'] = userimage.status
         userimage_data['date'] = userimage.date
         userimage_data['public_id'] = userimage.public_id
-        userimage_data['name'] = userimage.name
         userimage_data['date_birth'] = userimage.date_birth
         userimage_data['document_id'] = userimage.document_id
         userimage_data['age'] = userimage.age
@@ -509,15 +522,22 @@ class Memo(Base):
     memo_id = Column(Integer, primary_key=True)
     id_memo_type = Column(ForeignKey('memo_type.memo_type_id'), index=True)
     description = Column(String(100))
+    date = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"))
     title = Column(String(45))
     user_id = Column(ForeignKey('user.user_id'), index=True)
     school_id = Column(ForeignKey('school.school_id'), index=True)
-
-    date = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"))
-
+    public_id_change = Column(String(50))
     memo_type = relationship('MemoType')
     user = relationship('User')
     school = relationship('School')
+
+class User_Memo(Base):
+    __tablename__ = 'user_memo'
+
+    user_memo_id = Column(Integer, primary_key=True)
+    memo_id = Column(ForeignKey('memo.memo_id'), index=True)
+    public_id = Column(String(50))
+    memo = relationship('Memo')
 
 def toMemo(items):
     memo = Memo()
@@ -526,6 +546,10 @@ def toMemo(items):
         memo.id_memo_type = items['id_memo_type']
     if 'description' in items:
         memo.description = items['description']
+    if 'date' in items:
+        memo.date = items['date']
+    if 'public_id_change' in items:
+        memo.public_id_change = items['public_id_change']
     if 'title' in items:
         memo.title = items['title']
     if 'user_id' in items:
@@ -541,13 +565,66 @@ def memoToArray(memos):
     for memo in memos:
         memo_data = {}
         memo_data['id_memo_type'] = memo.id_memo_type
-        memo_data['memo_description'] = memo.description
-        memo_data['memo_title'] = memo.title
+        memo_data['description'] = memo.description
+        memo_data['title'] = memo.title
+        memo_data['memo_id'] = memo.memo_id
         memo_data['user_id'] = memo.user_id
         memo_data['school_id'] = memo.school_id
         memo_data['user_public_id'] = memo.user.public_id
+        memo_data['public_id_change'] = memo.public_id_change
         memo_data['memo_date'] = memo.date.strftime('%b %d %Y %I:%M%p')
         output.append(memo_data)
+
+    return output
+
+def usermemoToArray(usermemos):
+    output = []
+
+    for memo in usermemos:
+        memo_data = {}
+        memo_data['user_memo_id'] = memo.user_memo_id
+        memo_data['public_id'] = memo.public_id
+        output.append(memo_data)
+
+    return output
+
+def taskToArray(tasks):
+    output = []
+
+    for task in tasks:
+        task_data = {}
+        task_data['task_id'] = task.task_id
+        task_data['subject_id'] = task.subject_id
+        task_data['description'] = task.description
+        task_data['user_id'] = task.user_id
+        task_data['school_id'] = task.school_id
+        task_data['school_name'] = task.school_name
+        task_data['status_teacher'] = task.status_teacher
+        task_data['status_student'] = task.status_student
+        task_data['public_id_teacher'] = task.public_id_teacher
+        task_data['subject_name'] = task.subject_name
+        task_data['date'] = task.date.strftime('%b %d %Y %I:%M%p')
+        output.append(task_data)
+
+    return output
+
+# Modificacion task
+def tasksToArrayByStudentId(tasks):
+    output = []
+
+    for task in tasks:
+        task_data = {}
+        task_data['task_id'] = task.task_id
+        task_data['subject_id'] = task.subject_id
+        task_data['description'] = task.description
+        task_data['course_id'] = task.id_course
+        task_data['couse_name'] = task.course_name
+        task_data['status_teacher'] = task.status_teacher
+        task_data['status_student'] = task.status_student
+        task_data['subject_name'] = task.subject_name
+        task_data['public_id_teacher'] = task.public_id_teacher
+        task_data['date'] = task.date.strftime('%b %d %Y %I:%M%p')
+        output.append(task_data)
 
     return output
 
@@ -646,7 +723,8 @@ class School(Base):
     apartment = Column(String(45))
     logo = Column(String(200))
     location = Column(String(60))
-    date = Column(DateTime)
+    telephone = Column(String(60))
+    date = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"))
     document_id = Column(String(45))
     school_code = Column(String(45))
     public_id_school = Column(String(100))
@@ -673,10 +751,12 @@ def toSchool(items):
         school.logo = items['logo']
     if 'location' in items:
         school.location = items['location']
+    if 'telephone' in items:
+        school.telephone = items['telephone']
     if 'document_id' in items:
         school.document_id = items['document_id']
-    if 'school_code' in items:
-        school.school_code = items['school_code']
+   # if 'school_code' in items:
+   #    school.school_code = items['school_code']
 
     code = str(uuid.uuid4())
     generate_code = code[:8]
@@ -722,8 +802,9 @@ def schoolUserToArray(zones):
         school_data['document_id'] = school.document_id
         school_data['school_code'] = school.school_code
         school_data['telephone'] = school.telephone
-        school_data['latitude'] = school.latitude
-        school_data['longitude'] = school.longitude
+        school_data['latitude'] = str(school.latitude)
+        school_data['longitude'] = str(school.longitude)
+        school_data['public_id_school'] = school.public_id_school
 
         output.append(school_data)
 
@@ -789,6 +870,8 @@ def studentSubjectToArray(students):
         student_data['public_id_student'] = student.public_id_student
         student_data['user_id'] = student.user_id
         student_data['parent_id'] = student.parent_id
+        student_data['public_id_tutor'] = student.public_id_tutor
+        student_data['average_qualification'] = str(student.average_qualification)
         student_data['student_image'] = student.student_image
         output.append(student_data)
 
@@ -815,6 +898,25 @@ def tutorStudentToArray(tutor):
 
     return output
 
+
+def childStudentToArray(tutor):
+    output = []
+
+    for tut in tutor:
+        tut_data = {}
+        tut_data['school_name'] = tut.school_name
+        tut_data['student_name'] = tut.student_name
+        tut_data['user_code'] = tut.user_code
+        tut_data['public_id_child'] = tut.public_id_child
+        tut_data['age'] = tut.age
+        tut_data['course_name'] = tut.course_name
+        tut_data['num_course_students'] = tut.num_course_students
+        tut_data['user_id'] = tut.user_id
+        tut_data['course_id'] = tut.course_id
+        output.append(tut_data)
+
+    return output
+
 def studentbyCourseToArray(students):
     output = []
 
@@ -823,6 +925,21 @@ def studentbyCourseToArray(students):
         student_data['student_name'] = student.student_name
         student_data['student_id'] = student.student_id
         student_data['user_code'] = student.user_code
+        output.append(student_data)
+
+    return output
+
+def subjectStudentQualificationToArray(students):
+    output = []
+
+    for student in students:
+        student_data = {}
+        student_data['student_name'] = student.student_name
+        student_data['user_code'] = student.user_code
+        student_data['subject_name'] = student.subject_name
+        student_data['average_value'] = str(student.average_value)
+        student_data['id_subject'] = student.id_subject
+
         output.append(student_data)
 
     return output
@@ -836,8 +953,29 @@ def studentQualificationToArray(students):
         student_data['student_name'] = student.student_name
         student_data['user_code'] = student.user_code
         student_data['subject_name'] = student.subject_name
-        student_data['average_value'] = student.average_value
+        student_data['average_value'] = str(student.average_value)
+        student_data['test_type'] = student.test_type
+        student_data['test_date'] = student.test_date
+        student_data['value'] = str(student.value)
+
         output.append(student_data)
+
+    return output
+
+def qualificationToArray(qualifications):
+    output = []
+
+    for qualification in qualifications:
+        qualification_data = {}
+        qualification_data['qualification_id'] = qualification.qualification_id
+        qualification_data['id_qualification_type'] = qualification.id_qualification_type
+        qualification_data['id_course'] = qualification.id_course
+        qualification_data['id_subject'] = qualification.id_subject
+        qualification_data['value'] = qualification.value
+        qualification_data['test_type'] = qualification.test_type
+        qualification_data['test_date'] = qualification.test_date
+
+        output.append(qualification_data)
 
     return output
 
@@ -959,9 +1097,9 @@ def courseToArrayModel(courses):
     for course in courses:
         course_data = {}
         course_data['course_id'] = course.course_id     #Id Aula
-        course_data['course_name'] = course.name #Nombre Aula
+        course_data['name'] = course.name #Nombre Aula
         course_data['id_grade'] = course.id_grade       #Id Grado
-        course_data['grade_name'] = course.grade.name   #Nombre del Grado
+        #course_data['grade_name'] = course.grade.name   #Nombre del Grado
         output.append(course_data)
 
     return output
@@ -1033,7 +1171,7 @@ class Qualification(Base):
     id_subject = Column(ForeignKey('subject.subject_id'), index=True)
     test_date = Column(DateTime)
     test_type = Column(String(60))
-
+    value = Column(Integer)
     course = relationship('Course')
     qualification_type = relationship('QualificationType')
     subject = relationship('Subject')
@@ -1075,6 +1213,7 @@ class Assitance(Base):
     id_subject = Column(ForeignKey('subject.subject_id'), index=True)
     value = Column(Integer)
     comments = Column(String(100))
+    date = Column(String(100))
 
     course = relationship('Course')
     assitance_type = relationship('AssitanceType')
@@ -1094,10 +1233,29 @@ def toAssitance(items):
         assitance.id_subject = items['id_subject']
     if 'value' in items:
         assitance.value = items['value']
+    if 'date' in items:
+        assitance.date = items['date']
     if 'comments' in items:
         assitance.comments = items['comments']
 
     return assitance
+
+def assistantToArray(assistance_list):
+    output = []
+
+    for assistance in assistance_list:
+        assistance_data = {}
+        assistance_data['assitance_id'] = assistance.assitance_id
+        assistance_data['id_assitance_type'] = assistance.id_assitance_type
+        assistance_data['id_course'] = assistance.id_course
+        assistance_data['id_usr_student'] = assistance.id_usr_student
+        assistance_data['id_subject'] = assistance.id_subject
+        assistance_data['date'] = assistance.date
+        assistance_data['value'] = assistance.value
+        assistance_data['comments'] = assistance.comments
+        output.append(assistance_data)
+
+    return output
 
 def assistantStudentToArray(teacher_subjects):
     output = []
@@ -1107,6 +1265,18 @@ def assistantStudentToArray(teacher_subjects):
         user_parent_data['assistance'] = user_parent.assistance
         user_parent_data['count_assistance'] = user_parent.count_assistance
         output.append(user_parent_data)
+
+    return output
+
+def assistanceToArray(assistances):
+    output = []
+
+    for assistance in assistances:
+        assistance_data = {}
+        assistance_data['presences'] = assistance.presences
+        assistance_data['absences'] = assistance.absences
+        assistance_data['excuses'] = assistance.excuses
+        output.append(assistance_data)
 
     return output
 
@@ -1179,3 +1349,35 @@ class Schedule(Base):
     datetime_todo = Column(DateTime,)
     date = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"))
     done = Column(Integer, default=1)
+
+class Task(Base):
+    __tablename__ = 'task'
+
+    task_id = Column(Integer, primary_key=True)
+    subject_id = Column(ForeignKey('subject.subject_id'), index=True)
+    description = Column(String(500))
+    date = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"))
+    user_id = Column(ForeignKey('user.user_id'), index=True)
+    school_id = Column(ForeignKey('school.school_id'), index=True)
+    school_name = Column(String(100))
+    public_id_teacher = Column(String(50))
+    subject_name = Column(String(100))
+    status_teacher = Column(Integer)
+    status_student = Column(Integer)
+
+
+    subject = relationship('Subject')
+    user = relationship('User')
+    school = relationship('School')
+
+class Activity(Base):
+    __tablename__ = 'activity'
+
+    activity_id = Column(Integer, primary_key=True)
+    description = Column(String(200))
+    date = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"))
+    title = Column(String(45))
+    user_id = Column(ForeignKey('user.user_id'), index=True)
+    student_name = Column(String(50))
+
+    user = relationship('User')

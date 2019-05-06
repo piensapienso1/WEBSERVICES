@@ -3,6 +3,8 @@ from flask_sqlalchemy import SQLAlchemy
 from tutor_model import *
 import pickle
 import tutor_param
+from sqlalchemy import and_
+
 
 import json
 from collections import namedtuple
@@ -118,6 +120,7 @@ def createUser(user):
             schoolid =  output2[0]['school_id']
 
             createUserParent(user, schoolid)
+            createUserSchool(user, schoolid)
             createStudentCourse(user)
         return jsonify(Response(ResponseType.SUCCESS,201,'Usuario Insertado',None).serialize())
 
@@ -217,13 +220,11 @@ def createSchool(school):
             db.session.add(sch)
             db.session.commit()
 
-            #generateCodeSchool(school)
-            #loadUserDirector(school)
-
-            result = jsonify(Response(ResponseType.SUCCESS,201,'Escuela Insertada',sch).serialize())
+            result = jsonify(Response(ResponseType.SUCCESS,200,'Escuela Insertada',None).serialize())
             return result
     except Exception as ex:
-        result = jsonify(Response(ResponseType.ERROR,424,'Error insertando escuela: '+str(ex), sch).serialize())
+        result = jsonify(Response(ResponseType.ERROR,424,'Error insertando escuela: '+str(ex), None).serialize())
+
 
 #METODO CREADO PARA GENERAR EL CODE DEL CENTRO CUANDO SE REGISTRA
 def generateCodeSchool(school):
@@ -354,7 +355,9 @@ def createGrade(grade):
 
 def createAssitance(assitance):
     try :
+        print(assitance)
         assist = toAssitance(assitance)
+        print(assist)
         db.session.add(assist)
         db.session.commit()
 
@@ -436,6 +439,18 @@ def getTutorByStudentId(student_id):
     except Exception as ex:
         return jsonify(Response(ResponseType.ERROR,404,str(ex),None).serialize())
 
+
+def getChildByTutorId(public_id_tutor):
+    try:
+        sql_string = "CALL find_ChildbyTutor ('{params1}')".format(params1=public_id_tutor)
+        user = db.session.execute(sql_string)
+        outputUser2 = childStudentToArray(user)
+        result = jsonify(Response(ResponseType.SUCCESS,200,'Hijos del Public Id Tutor',outputUser2).serialize())
+        return result
+    except Exception as ex:
+        return jsonify(Response(ResponseType.ERROR,404,str(ex),None).serialize())
+
+
 def getTeacherByStudentId(student_id):
     try:
         sql_string = "CALL find_TeacherbyStudent ('{params1}')".format(params1=student_id)
@@ -451,7 +466,33 @@ def getQualificationByStudentId(course_id, student_id,subject_id):
         sql_string = "CALL find_QualificationByStudent ('{params1}','{params2}','{params3}')".format(params1=course_id,params2=student_id,params3=subject_id)
         user = db.session.execute(sql_string)
         outputUser2 = studentQualificationToArray(user)
-        result = jsonify(Response(ResponseType.SUCCESS,200,'Calificacion de estudiantes por materia',outputUser2).serialize())
+        result = jsonify(Response(ResponseType.SUCCESS,200,'Calificaciones del estudiante por materia',outputUser2).serialize())
+        return result
+    except Exception as ex:
+        return jsonify(Response(ResponseType.ERROR,404,str(ex),None).serialize())
+
+def getQualificationByUserId(student_id):
+    try:
+        sql_string = "CALL find_QualificationByUserId ('{params1}')".format(params1=student_id)
+        query_qualification = db.session.execute(sql_string)
+        outputUser2 = subjectStudentQualificationToArray(query_qualification)
+
+        for single_qualification in outputUser2:
+            user_qualification = db.session.query(Qualification).filter(and_(Qualification.id_usr_student == student_id, Qualification.id_subject == single_qualification['id_subject']))
+            outputQualification = qualificationToArray(user_qualification)
+            single_qualification['qualifications'] = outputQualification
+
+        result = jsonify(Response(ResponseType.SUCCESS,200,'Calificaciones del estudiante por materia:',outputUser2).serialize())
+        return result
+    except Exception as ex:
+        return jsonify(Response(ResponseType.ERROR,404,str(ex),None).serialize())
+
+def getTasksByStudentId(student_id):
+    try:
+        sql_string = "CALL find_TasksByStudent ('{params1}')".format(params1=student_id)
+        tasks = db.session.execute(sql_string)
+        output = tasksToArrayByStudentId(tasks)
+        result = jsonify(Response(ResponseType.SUCCESS,200,'Tareas del estudiante:',output).serialize())
         return result
     except Exception as ex:
         return jsonify(Response(ResponseType.ERROR,404,str(ex),None).serialize())
@@ -599,7 +640,7 @@ def createCourse(course):
     except Exception as ex:
         result = jsonify(Response(ResponseType.ERROR,424,'Error insertando Clase: '+str(ex), None).serialize())
 
-#METODO CREADO PARA REALIZAR ACTUALIZACION DE LOS DATOS DE UN CURSO
+#METODO MODIFICAR CURSO
 def updateCourse(course):
     try:
         if (course['status'] == 0):
@@ -610,6 +651,62 @@ def updateCourse(course):
             db.session.commit()
 
         return jsonify(Response(ResponseType.SUCCESS,200,'Curso actualizado',None).serialize())
+    except Exception as ex:
+        return jsonify(Response(ResponseType.ERROR,404,str(ex),None).serialize())
+
+#METODO MODIFICAR MEMO
+def updateMemo(memo):
+    try:
+        query =  "INSERT INTO user_memo (memo_id, public_id) VALUES ("+ str(memo['memo_id']) +", '" + str(memo['public_id_change']) + "')"
+        print(query)
+        db.session.execute(query)
+        db.session.commit()
+
+        return jsonify(Response(ResponseType.SUCCESS,200,'Public ID insertada a memo',memo).serialize())
+    except Exception as ex:
+        return jsonify(Response(ResponseType.ERROR,404,str(ex),None).serialize())
+
+#METODO MODIFICAR TASK
+def updateTask(task):
+    try:
+        if ('subject_id' in task):
+
+            db.session.query(Task).filter(Task.task_id == task['task_id']).update({
+            Task.subject_id: task['subject_id']
+            })
+
+            query_subject = db.session.execute("SELECT name FROM subject WHERE subject_id = " + str(task['subject_id']))
+            for u in query_subject:
+                Task.subject_name = u[0]
+
+        if ('description' in task):
+            db.session.query(Task).filter(Task.task_id == task['task_id']).update({
+            Task.description: task['description']
+            })
+        if ('user_id' in task):
+            db.session.query(Task).filter(Task.task_id == task['task_id']).update({
+            Task.user_id: task['user_id']
+            })
+        if ('school_id' in task):
+            db.session.query(Task).filter(Task.task_id == task['task_id']).update({
+            Task.school_id: task['school_id']
+            })
+        if ('status_teacher' in task):
+            db.session.query(Task).filter(Task.task_id == task['task_id']).update({
+            Task.status_teacher: task['status_teacher']
+            })
+        if ('status_student' in task):
+            db.session.query(Task).filter(Task.task_id == task['task_id']).update({
+            Task.status_student: task['status_student']
+            })
+        if ('public_id_teacher' in task):
+            db.session.query(Task).filter(Task.task_id == task['task_id']).update({
+            Task.public_id_teacher: task['public_id_teacher']
+            })
+
+        db.session.commit()
+
+        return jsonify(Response(ResponseType.SUCCESS,200,'Memo actualizado',task).serialize())
     except Exception as ex:
         return jsonify(Response(ResponseType.ERROR,404,str(ex),None).serialize())
 
@@ -625,6 +722,16 @@ def getAssistantByStudentId(public_id,subject_id):
     except Exception as ex:
         return jsonify(Response(ResponseType.ERROR,404,str(ex),None).serialize())
 
+def getAssistanceByStudent(student_id):
+    try:
+        sql_string = "CALL find_AssistanceByStudent ('{params1}')".format(params1=student_id)
+        assistances = db.session.execute(sql_string)
+        outputUser2 = assistanceToArray(assistances)
+        result = jsonify(Response(ResponseType.SUCCESS,200,'Asistencias correspondiente a estudiante',outputUser2).serialize())
+        return result
+
+    except Exception as ex:
+        return jsonify(Response(ResponseType.ERROR,404,str(ex),None).serialize())
 
 def getAllSubject():
     try:
@@ -634,12 +741,12 @@ def getAllSubject():
     except Exception as ex:
         return jsonify(Response(ResponseType.ERROR,404,str(ex),"").serialize())
 
-def getSubjectByDirectorId(public_id):
+def getSubjectByTeacherId(public_id):
     try:
         sql_string = "CALL find_SubjectByUser ('{params1}')".format(params1=public_id)
         subject = db.session.execute(sql_string)
         outputUser2 = subjectStudentToArray(subject)
-        result = jsonify(Response(ResponseType.SUCCESS,200,'Materias asociadas al usuario enviado',outputUser2).serialize())
+        result = jsonify(Response(ResponseType.SUCCESS,200,'Materias asociadas al profesor enviado',outputUser2).serialize())
         return result
 
     except Exception as ex:
@@ -674,7 +781,35 @@ def getAllMemo():
     try:
         memo = db.session.query(Memo).all()
         output = memoToArray(memo)
+
+        for single_memo in output:
+            user_memo = db.session.query(User_Memo).filter(User_Memo.memo_id == single_memo['memo_id'])
+            outputUserMemo = usermemoToArray(user_memo)
+            single_memo['public_id_change'] = outputUserMemo
+
+            if(isinstance(single_memo['school_id'],int)):
+                query_school_name = db.session.execute("SELECT name FROM school WHERE school_id =" + str(single_memo['school_id']))
+                for u in query_school_name:
+                    single_memo['school_name'] = u[0]
+            else:
+                single_memo['school_name'] = "None"
         return jsonify(Response(ResponseType.SUCCESS,200,'Boletines retornados',output).serialize())
+    except Exception as ex:
+        return jsonify(Response(ResponseType.ERROR,404,str(ex),"").serialize())
+
+def getAllTask():
+    try:
+        task = db.session.query(Task).all()
+        output = taskToArray(task)
+        return jsonify(Response(ResponseType.SUCCESS,200,'Tareas retornados',output).serialize())
+    except Exception as ex:
+        return jsonify(Response(ResponseType.ERROR,404,str(ex),"").serialize())
+
+def getAllAssistance():
+    try:
+        assistance = db.session.query(Assitance).all()
+        output = assistantToArray(assistance)
+        return jsonify(Response(ResponseType.SUCCESS,200,'Tareas retornados',output).serialize())
     except Exception as ex:
         return jsonify(Response(ResponseType.ERROR,404,str(ex),"").serialize())
 
@@ -684,12 +819,15 @@ def createMemo(memo):
 
         users = db.session.query(User).filter(User.public_id == memo['public_id_creator'])
         output = userToArray(users)
+        query_school = db.session.execute("SELECT school_id FROM user_school WHERE user_id = " + str(output[0]['user_id']))
+        for u in query_school:
+            mem.school_id = u[0]
 
         mem.user_id = output[0]['user_id']
-        mem.school_id = memo['school_id']
         mem.id_memo_type = memo['id_memo_type']
         mem.title = memo['title']
         mem.description = memo['description']
+        mem.public_id_change = "None"
 
         db.session.add(mem)
         db.session.commit()
@@ -698,6 +836,80 @@ def createMemo(memo):
         return result
     except Exception as ex:
         result = jsonify(Response(ResponseType.ERROR,424,'Error insertando Boletin: '+str(ex), None).serialize())
+
+def createActivity(activity):
+    try :
+        act = Activity()
+        print(activity)
+
+        query_user = db.session.execute("SELECT first_name, last_name FROM user WHERE user_id = " + str(activity['user_id']))
+        print(query_user)
+
+        for u in query_user:
+            act.student_name = u[0] + ' ' + u[1]
+
+        act.user_id = activity['user_id']
+        print(activity['user_id'])
+        act.title = activity['title']
+        print(activity['title'])
+        act.description = activity['description']
+        print(activity['description'])
+
+        db.session.add(act)
+        db.session.commit()
+
+        result = jsonify(Response(ResponseType.SUCCESS,201,'Actividad Insertado',None).serialize())
+        return result
+    except Exception as ex:
+        result = jsonify(Response(ResponseType.ERROR,424,'Error insertando actividad: '+str(ex), None).serialize())
+
+def getActivitiesByStudent(student_id):
+    try:
+        sql_string = "CALL find_ActivitiesByStudent ('{params}')".format(params=student_id)
+        activities = db.session.execute(sql_string)
+        output = activityToArray(activities)
+
+        return jsonify(Response(ResponseType.SUCCESS,200,'Actividades recibidas del estudiante:',output).serialize())
+    except Exception as ex:
+        return jsonify(Response(ResponseType.ERROR,404,str(ex),None).serialize())
+
+def getAllActivity():
+    try:
+        activity = db.session.query(Activity).all()
+        output = activityToArray(activity)
+        return jsonify(Response(ResponseType.SUCCESS,200,'Actividades retornados',output).serialize())
+    except Exception as ex:
+        return jsonify(Response(ResponseType.ERROR,404,str(ex),"").serialize())
+
+def createTask(task):
+    try :
+        tas = Task()
+
+        query_school = db.session.execute("SELECT name FROM school WHERE school_id = " + str(task['school_id']))
+        query_subject = db.session.execute("SELECT name FROM subject WHERE subject_id = " + str(task['subject_id']))
+        for u in query_school:
+            tas.school_name = u[0]
+
+        for u in query_subject:
+            tas.subject_name = u[0]
+
+        tas.user_id = task['user_id']
+        tas.subject_id = task['subject_id']
+        tas.description = task['description']
+        tas.public_id_teacher = task['public_id_teacher']
+        tas.status_teacher = task['status_teacher']
+        tas.status_student = task['status_student']
+
+        tas.school_id = task['school_id']
+
+
+        db.session.add(tas)
+        db.session.commit()
+
+        result = jsonify(Response(ResponseType.SUCCESS,201,'Tarea Insertada',None).serialize())
+        return result
+    except Exception as ex:
+        result = jsonify(Response(ResponseType.ERROR,424,'Error insertando tarea: '+str(ex), None).serialize())
 
 def createCity(city):
     try :

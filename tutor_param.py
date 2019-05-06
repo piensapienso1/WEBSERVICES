@@ -3,6 +3,7 @@ from flask_restplus import fields
 def getMySQLConn():
 
     #return 'mysql+pymysql://youtop:YouToP8472@localhost/tutor_db'
+    #return 'mysql+pymysql://lpeguero:abcd1234@localhost/tutor_db'
     return 'mysql+pymysql://tutor_db:password@localhost/tutor_db'
 
 def getUserParam(us):
@@ -65,9 +66,9 @@ def getSchoolParam(school):
 		'apartment' : fields.String(required=False, description='apartment'),
         'logo' : fields.String(required=False, description='logo'),
         'location' : fields.String(required=False, description='location'),
-        #'public_id' : fields.String(required=True, description='No. Diretor'),
-        'document_id' : fields.String(required=True, description='No. RNC')
-
+        'public_id' : fields.String(required=True, description='No. Diretor'),
+        'document_id' : fields.String(required=True, description='No. RNC'),
+        'telephone' : fields.String(required=False, description='telephone')
 	})
 
 def getUserImageParam(img):
@@ -84,9 +85,9 @@ def getGradeParam(grade):
 
 def getCourseParam(course):
 	return course.model('Course', {
-        'id_course' : fields.Integer(required=True, description='Id Course'),
 		'name' : fields.String(required=False, description='Nombre Curso'),
-        'status' : fields.Integer(required=True, description='Status Curso')
+        'status' : fields.Integer(required=True, description='Status Curso'),
+        'id_grade' : fields.Integer(required=True, description='Id Course')
 	})
 
 def getSubjectParam(subject):
@@ -106,8 +107,8 @@ def getAssitanceParam(assitance):
         'id_usr_student' : fields.Integer(required=True, description='Id Estudiante'),
         'id_subject' : fields.Integer(required=True, description='Id Materia'),
         'value' : fields.Integer(required=True, description='Valor Asistencia'),
-        'comments' : fields.String(required=True, description='Comentarios docente')
-
+        'date' : fields.String(required=False, description='Valor Asistencia'),
+        'comments' : fields.String(required=False, description='Comentarios docente')
 	})
 
 def getQualificationParam(qualification):
@@ -116,18 +117,56 @@ def getQualificationParam(qualification):
         'id_course' : fields.Integer(required=True, description='Id Curso'),
         'id_usr_student' : fields.Integer(required=True, description='Id Estudiante'),
         'id_subject' : fields.Integer(required=True, description='Id Materia'),
-        'value' : fields.Integer(required=True, description='Valor Calificacion'),
-        'test_date' : fields.String(required=True, description='Fecha de Prueba'),
-        'test_type' : fields.String(required=True, description='Tipo de Prueba')
+        'value': fields.Integer(required=True, description='Valor Calificacion'),
+        'test_date' : fields.String(required=False, description='Formato: 2019-11-09 15:45:21'),
+        'test_type' : fields.String(required=False, description='Tipo de prueba')
 	})
 
 def getMemoParam(memo):
 	return memo.model('Memo', {
-		'id_memo_type' : fields.Integer(required=True, description='Id Tipo Memo'),
-		'title' : fields.String(required=True, description='Titulo Memo'),
+        'memo_id' : fields.Integer(required=True, description='Id del memo'),
+		'id_memo_type' : fields.Integer(required=False, description='Id Tipo Memo'),
+		'title' : fields.String(required=False, description='Titulo Memo'),
         'school_id' : fields.Integer(required=True, description='School ID'),
         'public_id_creator' : fields.String(required=True, description='Public Id Creador Memo'),
-        'description' : fields.String(required=True, description='Descripcion Memo')
+        'description' : fields.String(required=False, description='Descripcion Memo'),
+	})
+
+def getMemoParamPublicIdChange(putmemo):
+	return putmemo.model('User_Memo', {
+        'memo_id' : fields.Integer(required=True, description='Id del memo'),
+        'public_id_change' : fields.String(required=True, description='Public Id Change Memo'),
+	})
+
+def getTaskParam(task):
+	return task.model('Task', {
+        'task_id' : fields.Integer(required=True, description='Task ID'),
+		'subject_id' : fields.Integer(required=True, description='Subject ID'),
+        'school_id' : fields.Integer(required=True, description='School ID'),
+        'school_name' : fields.String(required=False, description='School Name'),
+        'public_id_teacher' : fields.String(required=True, description='Public Id Change Memo'),
+        'status_teacher' : fields.Integer(required=False, description='Teacher Status'),
+        'status_student' : fields.Integer(required=False, description='Student Status'),
+        'subject_name' : fields.String(required=False, description='Subject Name'),
+        'description' : fields.String(required=False, description='Task description'),
+        'date' : fields.String(required=False, description='Date'),
+        'user_id' : fields.Integer(required=True, description='User ID'),
+	})
+
+def getActivityParam(activity):
+	return activity.model('Activity', {
+        'activity_id' : fields.Integer(required=True, description='Activity ID'),
+		'user_id' : fields.Integer(required=True, description='User ID'),
+		'title' : fields.String(required=True, description='Activity Title'),
+        'student_name' : fields.String(required=True, description='Student Name'),
+        'description' : fields.String(required=True, description='Activity description'),
+        'date' : fields.String(required=False, description='Date'),
+	})
+
+def getMemoParamPut(memo):
+	return memo.model('Memo', {
+        'memo_id' : fields.Integer(required=True, description='Id del memo'),
+        'public_id_change' : fields.String(required=True, description='Public Id Change Memo')
 	})
 
 def getProvinceParam(province):

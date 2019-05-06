@@ -20,17 +20,20 @@ direct = Namespace('director', description='Operaciones del director')
 stud = Namespace('student', description='Operaciones del estudiante')
 tutor = Namespace('tutor', description='Operaciones del tutor')
 teach = Namespace('teacher', description='Operaciones del docente')
+child = Namespace('child', description='Operaciones de los hijos')
 grad = Namespace('grade', description='Operaciones de Aulas')
 cour = Namespace('course', description='Operaciones de Cursos')
 subj = Namespace('subject', description='Operaciones de Materias')
+activity = Namespace('activity', description='Operaciones de Actividades')
 img = Namespace('image', description='Mantenimiento de Imagenes')
+task = Namespace('task', description='Operaciones de Task')
 assit = Namespace('assitance', description='Mantenimiento de asistencia')
 qual = Namespace('qualification', description='Mantenimiento de Calificaciones')
 schedule = Namespace('schedule', description='Mantenimiento de schedule')
 memo = Namespace('memo', description='Mantenimiento de boletines o memorandum')
+putmemo = Namespace('putMemo', description='Agregar Public ID a Memo')
 province = Namespace('province', description='Mantenimiento de Provincias')
 neighborhood = Namespace('neighborhood', description='Mantenimiento de Neighborhood')
-
 
 api.add_namespace(us)
 api.add_namespace(logged_us)
@@ -38,6 +41,7 @@ api.add_namespace(sch)
 api.add_namespace(direct)
 api.add_namespace(teach)
 api.add_namespace(tutor)
+api.add_namespace(child)
 api.add_namespace(stud)
 api.add_namespace(helper)
 api.add_namespace(grad)
@@ -46,10 +50,14 @@ api.add_namespace(subj)
 api.add_namespace(img)
 api.add_namespace(assit)
 api.add_namespace(qual)
+api.add_namespace(task)
 #api.add_namespace(schedule)
 api.add_namespace(memo)
 api.add_namespace(province)
 api.add_namespace(neighborhood)
+api.add_namespace(activity)
+api.add_namespace(putmemo)
+
 
 
 app.config['SECRET_KEY'] = 'lopezthelma'
@@ -108,15 +116,15 @@ class getSchoolByUserId(Resource):
     def get(self,public_id):
         return service.getSchoolByUserId(public_id)
 
-@sch.route('/<string:public_id>/<string:id_type>')
-class getSchoolByDirectorId(Resource):
-    def get(self,public_id, id_type):
-        return service.getSchoolByDirectorId(public_id)
+#@sch.route('/<string:public_id>/<string:id_type>')
+#class getSchoolByDirectorId(Resource):
+#    def get(self,public_id, id_type):
+#        return service.getSchoolByDirectorId(public_id)
 
-@sch.route('/<string:public_id>/<string:id_type>/<string:school_id>')
-class getStudentsBySchoolId(Resource):
-    def get(self,public_id,id_type, school_id):
-        return service.getStudentsBySchoolId(public_id,id_type, school_id)
+#@sch.route('/<string:public_id>/<string:id_type>/<string:school_id>')
+#class getStudentsBySchoolId(Resource):
+#    def get(self,public_id,id_type, school_id):
+#        return service.getStudentsBySchoolId(public_id,id_type, school_id)
 
 @direct.route('/<string:school_id>')
 class getDirectorBySchool(Resource):
@@ -137,6 +145,12 @@ class getTutorByStudentId(Resource):
 class getStudentsByTutorId(Resource):
     def get(self,tutor_id, school_id):
         return service.getStudentsByTutorId(tutor_id, school_id)
+
+@child.route('/<string:public_id_tutor>')
+class getChildByTutorId(Resource):
+    def get(self,public_id_tutor):
+        return service.getChildByTutorId(public_id_tutor)
+
 
 @stud.route('/<string:student_id>')
 class getTeacherByStudentId(Resource):
@@ -205,10 +219,10 @@ class Subject(Resource):
         data = request.get_json()
         return service.updateSubject(data)
 
-@subj.route('/<string:public_id>')
-class getSubjectByDirectorId(Resource):
-    def get(self,public_id):
-        return service.getSubjectByDirectorId(public_id)
+@subj.route('/<string:public_id_teacher>')
+class getSubjectByTeacherId(Resource):
+    def get(self,public_id_teacher):
+        return service.getSubjectByTeacherId(public_id_teacher)
 
 @img.route('')
 class UserImage(Resource):
@@ -227,15 +241,26 @@ class getUserImageByUserId(Resource):
 
 @assit.route('')
 class Assitance(Resource):
+    def get(self):
+        return service.getAllAssistance()
+
     @assit.expect(tutor_param.getAssitanceParam(assit))
     def post(self,*args, **kwargs):
         data = request.get_json()
-        return service.createAssitance(data)
+        for object in data:
+            service.createAssitance(object)
+        return jsonify(data)
+
 
 @assit.route('/<string:public_id>/<string:subject_id>')
 class getAssistantByStudentId(Resource):
     def get(self,public_id,subject_id):
         return service.getAssistantByStudentId(public_id,subject_id)
+
+@assit.route('/<string:student_id>')
+class getAssistanceByStudent(Resource):
+    def get(self,student_id):
+        return service.getAssistanceByStudent(student_id)
 
 @qual.route('')
 class Qualification(Resource):
@@ -254,6 +279,11 @@ class getQualificationBySubjectId(Resource):
     def get(self,course_id,subject_id):
         return service.getQualificationBySubjectId(course_id,subject_id)
 
+@qual.route('/<string:student_id>')
+class getQualificationByUserId(Resource):
+    def get(self,student_id):
+        return service.getQualificationByUserId(student_id)
+
 @memo.route('')
 class Memo(Resource):
     def get(self):
@@ -263,6 +293,48 @@ class Memo(Resource):
     def post(self,*args, **kwargs):
         data = request.get_json()
         return service.createMemo(data)
+
+@putmemo.route('')
+class putMemo(Resource):
+    @putmemo.expect(tutor_param.getMemoParamPublicIdChange(putmemo))
+    def put(self,*args, **kwargs):
+        data = request.get_json()
+        return service.updateMemo(data)
+
+@task.route('')
+class Task(Resource):
+    def get(self):
+        return service.getAllTask()
+
+    @task.expect(tutor_param.getTaskParam(task))
+    def post(self,*args, **kwargs):
+        data = request.get_json()
+        return service.createTask(data)
+
+    @task.expect(tutor_param.getTaskParam(task))
+    def put(self,*args, **kwargs):
+        data = request.get_json()
+        return service.updateTask(data)
+
+@task.route('/<string:student_id>')
+class getTasksByStudentId(Resource):
+    def get(self,student_id):
+        return service.getTasksByStudentId(student_id)
+
+@activity.route('')
+class Activity(Resource):
+    def get(self):
+        return service.getAllActivity()
+
+    @activity.expect(tutor_param.getActivityParam(activity))
+    def post(self,*args, **kwargs):
+        data = request.get_json()
+        return service.createActivity(data)
+
+@activity.route('/<string:student_id>')
+class getActivitiesByStudent(Resource):
+    def get(self,student_id):
+        return service.getActivitiesByStudent(student_id)
 
 @cour.route('')
 class Course(Resource):
